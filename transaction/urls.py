@@ -1,0 +1,26 @@
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from transaction.views.cash_transaction_views import CashTransactionViewSet, LedgerReportViewSet
+from transaction.views.chalan_views import ChallanViewSet, ProformaViewSet
+from transaction.views.journal_entry_views import JournalVoucherViewSet
+from transaction.views.salse_purchase_views import PurchaseViewSet, SalesViewSet, get_advanced_ledger_report, get_invoice_print_data
+
+
+router = DefaultRouter()
+router.register(r'salse_transaction', SalesViewSet)
+router.register(r'purchase_transaction', PurchaseViewSet)
+router.register(r'cash-transactions', CashTransactionViewSet)
+router.register(r'cash-ledger-report', LedgerReportViewSet, basename='cash-ledger-report')
+router.register(r'journal', JournalVoucherViewSet, basename='journal_entry_voucher')
+router.register(r'delivery_challan', ChallanViewSet, basename='delivery-challan')
+router.register(r'proforma_invoice', ProformaViewSet, basename='proforma-invoice')
+
+
+
+
+urlpatterns = [
+    path('', include(router.urls)),
+    path('ledger-report/', get_advanced_ledger_report, name='ledger-report'),
+    path('invoice-print-data/', get_invoice_print_data, name='invoice-pdf-data'),
+
+]
