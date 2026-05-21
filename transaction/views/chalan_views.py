@@ -1,21 +1,26 @@
 import logging
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, filters
 from rest_framework.response import Response
+from django_filters.rest_framework import DjangoFilterBackend 
 from ..models import ChallanHeader, ProformaHeader
 from ..serializers.chalan_serializers import ChallanHeaderSerializer, ProformaHeaderSerializer
-# Custom permission architecture imports
 from core.permissions import IsAdminOrSuperuser, IsAccountActive 
 
 logger = logging.getLogger(__name__)
 
 class ChallanViewSet(viewsets.ModelViewSet):
-    queryset = ChallanHeader.objects.filter(delflag=' ').order_by('-created_at')
+    queryset = ChallanHeader.objects.filter(delflag=' ').prefetch_related('details')
     serializer_class = ChallanHeaderSerializer
     permission_classes = [IsAdminOrSuperuser, IsAccountActive]
 
+    # ✅ FIX: Enable industrial filtering backends for search and dynamic tabs query mapping
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['dc_type'] # 👈 Flutter ka ?dc_type=INWARD/OUTWARD ab yahan se catch hoga!
+    search_fields = ['billno', 'name', 'gst_number', 'purchase_order_no']
+    ordering = ['-created_at']
+
     def create(self, request, *args, **kwargs):
         logger.info(f"🚀 Attempting to execute Delivery Challan Transaction. Payload: {request.data}")
-        
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             try:
@@ -34,13 +39,17 @@ class ChallanViewSet(viewsets.ModelViewSet):
 
 
 class ProformaViewSet(viewsets.ModelViewSet):
-    queryset = ProformaHeader.objects.filter(delflag=' ').order_by('-created_at')
+    queryset = ProformaHeader.objects.filter(delflag=' ').prefetch_related('details').order_by('-created_at')
     serializer_class = ProformaHeaderSerializer
     permission_classes = [IsAdminOrSuperuser, IsAccountActive]
 
+    # ✅ FIX: Enable search architecture for proforma list maps too
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['billno', 'name', 'gst_number']
+    ordering = ['-created_at']
+
     def create(self, request, *args, **kwargs):
         logger.info(f"🚀 Attempting to instantiate Proforma Invoice. Payload: {request.data}")
-        
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             try:

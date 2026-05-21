@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from transaction.views.cash_transaction_views import CashTransactionViewSet, LedgerReportViewSet
 from transaction.views.chalan_views import ChallanViewSet, ProformaViewSet
+from transaction.views.financial_notes_views import FinancialNoteViewSet
 from transaction.views.journal_entry_views import JournalVoucherViewSet
 from transaction.views.salse_purchase_views import PurchaseViewSet, SalesViewSet, get_advanced_ledger_report, get_invoice_print_data
 
@@ -14,8 +15,7 @@ router.register(r'cash-ledger-report', LedgerReportViewSet, basename='cash-ledge
 router.register(r'journal', JournalVoucherViewSet, basename='journal_entry_voucher')
 router.register(r'delivery_challan', ChallanViewSet, basename='delivery-challan')
 router.register(r'proforma_invoice', ProformaViewSet, basename='proforma-invoice')
-
-
+router.register(r'financial_notes', FinancialNoteViewSet, basename='financial-notes')
 
 
 urlpatterns = [

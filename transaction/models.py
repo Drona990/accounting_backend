@@ -4,6 +4,7 @@ from django.db import models
 from django.utils import timezone
 from master.models import CustomerMaster, Ledger, SupplierMaster
 
+
 # --- BILL/DC NUMBER GENERATORS ---
 def generate_bill_no():
     prefix = "INV"
@@ -269,3 +270,110 @@ class JournalItem(models.Model):
 
     def __str__(self):
         return f"{self.ledger.name} - {self.type} - {self.amount}"
+    
+
+#--------------------------------------------------------------------------------------------
+
+#--------------------------------------------------------------------------------------------
+
+
+# --- NOTE NUMBER GENERATORS ---
+def generate_dn_no():
+    prefix = "DN"
+    year = timezone.now().year
+    random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    return f"{prefix}-{year}-{random_str}"
+
+def generate_cn_no():
+    prefix = "CN"
+    year = timezone.now().year
+    random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    return f"{prefix}-{year}-{random_str}"
+
+
+# --- CREDIT & DEBIT NOTE HEADERS ---
+class FinancialNoteHeader(models.Model):
+    NOTE_TYPE_CHOICES = (
+        ('DEBIT_NOTE', 'Debit Note (Purchase Return)'),
+        ('CREDIT_NOTE', 'Credit Note (Sales Return)'),
+    )
+    
+    NOTE_REASONS = (
+        ('DAMAGED_GOODS', 'Damaged Goods'),
+        ('RATE_DIFFERENCE', 'Rate Difference'),
+        ('SALES_RETURN', 'Sales Return'),
+        ('PURCHASE_RETURN', 'Purchase Return'),
+        ('SHORTAGE', 'Shortage / Less Quantity'),
+    )
+
+    note_no = models.CharField(max_length=50, unique=True, editable=False)
+    note_type = models.CharField(max_length=15, choices=NOTE_TYPE_CHOICES)
+    note_date = models.DateField(default=timezone.now)
+    
+    customer = models.ForeignKey(CustomerMaster, on_delete=models.SET_NULL, null=True, blank=True)
+    supplier = models.ForeignKey(SupplierMaster, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    original_invoice_no = models.CharField(max_length=100, blank=True, null=True, help_text="Original Bill Ref")
+    original_invoice_date = models.DateField(blank=True, null=True)
+    reason = models.CharField(max_length=30, choices=NOTE_REASONS)
+    
+    ewb_no = models.CharField(max_length=50, blank=True, null=True)
+    dispatch = models.CharField(max_length=100, blank=True, null=True)
+    
+    name = models.CharField(max_length=255)
+    address = models.TextField(blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+    pin = models.CharField(max_length=10, blank=True, null=True)
+    gst_number = models.CharField(max_length=20, blank=True, null=True)
+
+    total_pcs = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    total_taxable = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    cgst = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    sgst = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    igst = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    round_off = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    grand_total = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    amtin_words = models.TextField(blank=True, null=True)
+
+    narration = models.TextField(blank=True, null=True)
+    delflag = models.CharField(max_length=1, default=' ')
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.CharField(max_length=100, default='ADMIN')
+
+    def save(self, *args, **kwargs):
+        if not self.note_no:
+            if self.note_type == 'DEBIT_NOTE':
+                self.note_no = generate_dn_no()
+            else:
+                self.note_no = generate_cn_no()
+        super().save(*args, **kwargs)
+
+
+class FinancialNoteDetail(models.Model):
+    header = models.ForeignKey(FinancialNoteHeader, related_name='details', on_delete=models.CASCADE)
+    sno = models.IntegerField()
+    product_name = models.CharField(max_length=255)
+    uom = models.CharField(max_length=50)
+    hsncode = models.CharField(max_length=50, blank=True, null=True)
+    qty = models.DecimalField(max_digits=15, decimal_places=2)
+    rate = models.DecimalField(max_digits=15, decimal_places=2)
+    amount = models.DecimalField(max_digits=15, decimal_places=2)  
+    cgst_p = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    sgst_p = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    igst_p = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    cgst_amt = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    sgst_amt = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    igst_amt = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    total = models.DecimalField(max_digits=15, decimal_places=2)  
+
+class NoteLedger(models.Model):
+    tranno = models.AutoField(primary_key=True)
+    trdate = models.DateField(default=timezone.now)
+    note_type = models.CharField(max_length=20)  
+    note_no = models.CharField(max_length=50)
+    party_name = models.CharField(max_length=255)
+    party_gst = models.CharField(max_length=20, blank=True, null=True)
+    trcr = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    trdr = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    ctype = models.CharField(max_length=10)      
+    delflag = models.CharField(max_length=1, default=' ')

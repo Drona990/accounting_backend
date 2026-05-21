@@ -25,7 +25,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 if IS_LOCAL:
     DEBUG = True
     # Local laptop IP add kiya taaki mobile se test ho sake
-    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '10.25.215.96']
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '10.76.151.96']
     FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:4200")
 else:
     DEBUG = os.getenv("DEBUG") == "True"
