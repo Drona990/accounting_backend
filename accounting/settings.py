@@ -1,7 +1,3 @@
-"""
-Django settings for accounting project.
-"""
-
 import os
 from datetime import timedelta
 from pathlib import Path
@@ -13,8 +9,7 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-# 🌟 Environment Detection Logic
-# Agar IS_LOCAL True hai, toh hum laptop par hain.
+# Environment Detection Logic
 IS_LOCAL = os.getenv("IS_LOCAL") == "True"
 
 # --------------------------------------------------
@@ -24,13 +19,12 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 
 if IS_LOCAL:
     DEBUG = True
-    # Local laptop IP add kiya taaki mobile se test ho sake
     ALLOWED_HOSTS = ['localhost', '127.0.0.1', '10.76.151.96']
     FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:4200")
 else:
     DEBUG = os.getenv("DEBUG") == "True"
-    ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "accounting.api.dronatandi.online,localhost").split(",")
-    FRONTEND_URL = "https://accounting.web.dronatandi.online"
+    ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "accounting.api.dronatandi.online,test.api.acc.dronatandi.online,localhost").split(",")
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "https://accounting.web.dronatandi.online")
 
 # --------------------------------------------------
 # APPLICATION DEFINITION
@@ -61,7 +55,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',          # Must be above CommonMiddleware
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -69,17 +63,11 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# --------------------------------------------------
-# CORS CONFIGURATION
-# --------------------------------------------------
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
 ROOT_URLCONF = 'accounting.urls'
 
-# --------------------------------------------------
-# TEMPLATES
-# --------------------------------------------------
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -95,16 +83,12 @@ TEMPLATES = [
     },
 ]
 
-# --------------------------------------------------
-# WSGI / ASGI
-# --------------------------------------------------
 WSGI_APPLICATION = 'accounting.wsgi.application'
 ASGI_APPLICATION = 'accounting.asgi.application'
 
 # --------------------------------------------------
-# DATABASE (PostgreSQL)
+# DATABASE (PostgreSQL - Fully Dynamic Setup)
 # --------------------------------------------------
-# 🌟 Dynamic Host Selection
 DB_HOST = os.getenv("DB_HOST_LOCAL") if IS_LOCAL else os.getenv("DB_HOST", "db")
 
 DATABASES = {
@@ -119,12 +103,11 @@ DATABASES = {
 }
 
 # --------------------------------------------------
-# CHANNEL LAYERS (Redis Fallback Framework Architecture)
+# CHANNEL LAYERS
 # --------------------------------------------------
 REDIS_URL = os.getenv("REDIS_URL_LOCAL") if IS_LOCAL else os.getenv("REDIS_URL", "")
 
 if REDIS_URL:
-    # Future Ready: Jab aap Redis configuration enable karoge
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
@@ -134,7 +117,6 @@ if REDIS_URL:
         },
     }
 else:
-    # Present Safe State: Pure In-Memory fallbacks schema deployment
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels.layers.InMemoryChannelLayer",
@@ -142,14 +124,16 @@ else:
     }
 
 # --------------------------------------------------
-# CACHES (Persistent DB-Backed Fallback)
+# CACHES (Dynamic Switch Between Prod and Test Services)
 # --------------------------------------------------
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.db.DatabaseCache",
-        "LOCATION": "my_cache_table",
+        "LOCATION": "test_cache_table" if os.getenv("DB_NAME") == "db_accounting_testing" else "my_cache_table",
     }
 }
+
+# --------------------------------------------------
 # AUTH
 # --------------------------------------------------
 AUTH_USER_MODEL = 'authentication.CustomUser'
@@ -160,7 +144,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # --------------------------------------------------
-# DJANGO REST FRAMEWORK
+# DRF MATRIX
 # --------------------------------------------------
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -181,9 +165,6 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=100),
 }
 
-# --------------------------------------------------
-# PASSWORD VALIDATION
-# --------------------------------------------------
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -192,7 +173,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # --------------------------------------------------
-# EMAIL CONFIG
+# EMAIL SERVICE
 # --------------------------------------------------
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
@@ -211,26 +192,22 @@ USE_I18N = True
 USE_TZ = True
 
 # --------------------------------------------------
-# STATIC FILES
+# STATIC & MEDIA ARCHITECTURE
 # --------------------------------------------------
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# 🌟 Media URL Logic: Local testing mein localhost use ho, Production mein domain.
 if IS_LOCAL:
     MEDIA_URL = '/media/'
 else:
-    MEDIA_URL = 'https://accounting.api.dronatandi.online/media/'
+    CURRENT_HOST = "test.api.acc.dronatandi.online" if "test.api.acc.dronatandi.online" in os.getenv("ALLOWED_HOSTS", "") else "accounting.api.dronatandi.online"
+    MEDIA_URL = f'https://{CURRENT_HOST}/media/'
 
 MEDIA_ROOT = BASE_DIR / 'media'
-
-# --------------------------------------------------
-# DEFAULT PRIMARY KEY
-# --------------------------------------------------
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # --------------------------------------------------
-# LOGGING CONFIGURATION
+# LOGGING SYSTEM
 # --------------------------------------------------
 LOGGING = {
     'version': 1,
@@ -263,7 +240,7 @@ LOGGING = {
             'level': 'ERROR',
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': BASE_DIR / 'logs' / 'django.log' if os.path.exists(BASE_DIR / 'logs') else 'django_error.log',
-            'maxBytes': 1024 * 1024 * 15,  # 15MB
+            'maxBytes': 1024 * 1024 * 15,
             'backupCount': 10,
             'formatter': 'verbose',
         },
